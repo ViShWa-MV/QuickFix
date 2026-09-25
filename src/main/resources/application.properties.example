@@ -1,0 +1,21 @@
+spring.application.name=user-service
+
+server.port=8081
+spring.datasource.url=jdbc:postgresql://localhost:5432/quickfix_user
+spring.datasource.username=postgres
+spring.datasource.password=CHANGEME
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+ 
+# oauth 
+spring.security.oauth2.client.registration.google.client-id=564752045039-dc8plg2sdlq9uden7g0l0d1cgefufgvf.apps.googleusercontent.com
+spring.security.oauth2.client.registration.google.client-secret=CHANGEME
+spring.security.oauth2.client.registration.google.scope=openid,profile,email
+
+#jwt 
+
+jwt.secret=CHANGEME
+
+jwt.expiration=3600000
