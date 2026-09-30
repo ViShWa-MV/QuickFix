@@ -15,7 +15,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @Component
-public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler {
+public class GoogleOAuth2SuccessHandler
+        implements AuthenticationSuccessHandler {
 
     private final UserService userService;
     private final JwtService jwtService;
@@ -35,14 +36,18 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
             Authentication authentication)
             throws IOException, ServletException {
 
+        // Get authenticated Google user
         OidcUser oidcUser =
                 (OidcUser) authentication.getPrincipal();
 
+        // Get information provided by Google
         String googleId = oidcUser.getSubject();
         String email = oidcUser.getEmail();
         String name = oidcUser.getFullName();
         String picture = oidcUser.getPicture();
 
+        // Find existing QuickFix user
+        // or create a new one
         User user = userService.findOrCreateGoogleUser(
                 googleId,
                 email,
@@ -50,19 +55,76 @@ public class GoogleOAuth2SuccessHandler implements AuthenticationSuccessHandler 
                 picture
         );
 
-        String token = jwtService.generateToken(
-                user.getId(),
-                user.getEmail(),
-                user.getRole().name()
+
+        // =====================================================
+        // NEW USER
+        // =====================================================
+
+        if (!user.isOnboardingCompleted()) {
+
+            System.out.println(
+                    "New user. Onboarding required."
+            );
+
+            System.out.println(
+                    "QuickFix User ID: "
+                    + user.getId()
+            );
+
+            System.out.println(
+                    "Email: "
+                    + user.getEmail()
+            );
+
+            response.sendRedirect(
+                    "http://localhost:5173/onboarding"
+            );
+
+            return;
+        }
+
+
+        // =====================================================
+        // EXISTING USER
+        // =====================================================
+
+        String token =
+                jwtService.generateToken(
+                        user.getId(),
+                        user.getEmail(),
+                        user.getRole().name()
+                );
+
+
+        System.out.println(
+                "Existing user."
         );
 
-        System.out.println("QuickFix User ID: " + user.getId());
-        System.out.println("Email: " + user.getEmail());
-        System.out.println("Role: " + user.getRole());
-        System.out.println("JWT: " + token);
-
-        response.getWriter().println(
-                "Google authentication successful"
+        System.out.println(
+                "QuickFix User ID: "
+                + user.getId()
         );
+
+        System.out.println(
+                "Email: "
+                + user.getEmail()
+        );
+
+        System.out.println(
+                "Role: "
+                + user.getRole()
+        );
+
+        System.out.println(
+                "JWT: "
+                + token
+        );
+
+
+      // Redirect existing user to home
+response.sendRedirect(
+    "http://localhost:5173/home?token="
+    + token
+);
     }
 }

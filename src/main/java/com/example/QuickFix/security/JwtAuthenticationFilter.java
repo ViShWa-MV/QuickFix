@@ -1,6 +1,7 @@
 package com.example.QuickFix.security;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -14,11 +15,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @Component
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
+public class JwtAuthenticationFilter
+        extends OncePerRequestFilter {
 
     private final JwtService jwtService;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(
+            JwtService jwtService) {
+
         this.jwtService = jwtService;
     }
 
@@ -29,43 +33,81 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
+        String authHeader =
+                request.getHeader("Authorization");
 
-        // No Authorization header
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
+        System.out.println(
+                "Authorization header: "
+                + authHeader
+        );
+
+        if (authHeader == null ||
+            !authHeader.startsWith("Bearer ")) {
+
+            filterChain.doFilter(
+                    request,
+                    response
+            );
+
             return;
         }
 
-        String token = authHeader.substring(7);
+        String token =
+                authHeader.substring(7);
 
         try {
 
             if (jwtService.isTokenValid(token)) {
 
-                Long userId = jwtService.extractUserId(token);
-                String role = jwtService.extractRole(token);
+                Long userId =
+                        jwtService.extractUserId(token);
+
+                String role =
+                        jwtService.extractRole(token);
+
+                System.out.println(
+                        "JWT valid. User ID: "
+                        + userId
+                );
+
+                System.out.println(
+                        "JWT role: "
+                        + role
+                );
 
                 SimpleGrantedAuthority authority =
-                        new SimpleGrantedAuthority("ROLE_" + role);
+                        new SimpleGrantedAuthority(
+                                "ROLE_" + role
+                        );
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userId,
                                 null,
-                                java.util.List.of(authority)
+                                List.of(authority)
                         );
 
                 SecurityContextHolder
                         .getContext()
-                        .setAuthentication(authentication);
+                        .setAuthentication(
+                                authentication
+                        );
             }
 
         } catch (Exception e) {
 
-            SecurityContextHolder.clearContext();
+            System.out.println(
+                    "JWT validation failed: "
+                    + e.getMessage()
+            );
+
+            SecurityContextHolder
+                    .clearContext();
         }
 
-        filterChain.doFilter(request, response);
+        filterChain.doFilter(
+                request,
+                response
+        );
     }
 }

@@ -28,7 +28,9 @@ public class User {
 
     private String profilePicture;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    private boolean onboardingCompleted;
+
+    @Enumerated(EnumType.STRING)
     private Role role;
 }
