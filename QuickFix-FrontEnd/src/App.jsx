@@ -5,6 +5,8 @@ import Onboarding from './pages/Onboarding'
 import Home from './pages/Home'
 import Profile from './pages/Profile'
 
+import API_BASE_URL from './api'
+
 import './App.css'
 
 
@@ -148,7 +150,7 @@ function App() {
 
         const response =
           await fetch(
-            'http://localhost:8081/api/users/me',
+            `${API_BASE_URL}/api/users/me`,
             {
               method: 'GET',
 

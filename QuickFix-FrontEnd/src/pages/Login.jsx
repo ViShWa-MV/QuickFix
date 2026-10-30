@@ -1,3 +1,6 @@
+import API_BASE_URL from '../api'
+
+
 function Login() {
 
   // =========================================================
@@ -7,7 +10,7 @@ function Login() {
   const handleGoogleLogin = () => {
 
     window.location.href =
-      'http://localhost:8081/oauth2/authorization/google'
+      `${API_BASE_URL}/oauth2/authorization/google`
   }
 
 

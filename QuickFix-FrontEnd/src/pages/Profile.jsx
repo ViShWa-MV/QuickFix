@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 
+import API_BASE_URL from '../api'
+
 
 function Profile({
   user,
@@ -99,7 +101,7 @@ function Profile({
 
       const response =
         await fetch(
-          'http://localhost:8081/api/users/addresses',
+          `${API_BASE_URL}/api/users/addresses`,
           {
             method: 'GET',
 
@@ -178,7 +180,7 @@ function Profile({
 
       const response =
         await fetch(
-          'http://localhost:8081/api/users/me',
+          `${API_BASE_URL}/api/users/me`,
           {
             method: 'PUT',
 
@@ -322,7 +324,7 @@ function Profile({
 
       const response =
         await fetch(
-          'http://localhost:8081/api/users/addresses',
+          `${API_BASE_URL}/api/users/addresses`,
           {
             method: 'POST',
 

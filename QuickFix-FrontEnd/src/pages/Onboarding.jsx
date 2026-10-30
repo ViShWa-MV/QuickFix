@@ -1,5 +1,7 @@
 import { useState } from 'react'
 
+import API_BASE_URL from '../api'
+
 
 function Onboarding() {
 
@@ -43,7 +45,7 @@ function Onboarding() {
 
       const response =
         await fetch(
-          'http://localhost:8081/api/users/onboarding',
+          `${API_BASE_URL}/api/users/onboarding`,
           {
             method: 'POST',
 
