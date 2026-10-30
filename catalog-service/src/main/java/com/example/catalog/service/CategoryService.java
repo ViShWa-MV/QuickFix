@@ -1,6 +1,7 @@
 package com.example.catalog.service;
 
 import com.example.catalog.entity.Category;
+import com.example.catalog.exception.ResourceNotFoundException;
 import com.example.catalog.repository.CategoryRepository;
 import org.springframework.stereotype.Service;
 
@@ -25,13 +26,13 @@ public class CategoryService {
 
     public Category getCategoryById(Long id) {
         return categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
     }
 
     public Category updateCategory(Long id, Category category) {
 
         Category existingCategory = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
         existingCategory.setName(category.getName());
         existingCategory.setDescription(category.getDescription());
@@ -42,7 +43,7 @@ public class CategoryService {
     public void deleteCategory(Long id) {
 
         Category existingCategory = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
         categoryRepository.delete(existingCategory);
     }

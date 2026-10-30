@@ -1,6 +1,7 @@
 package com.example.catalog.service;
 
 import com.example.catalog.entity.CatalogService;
+import com.example.catalog.exception.ResourceNotFoundException;
 import com.example.catalog.repository.CatalogServiceRepository;
 import org.springframework.stereotype.Service;
 
@@ -34,7 +35,7 @@ public class CatalogServiceManager {
 
         return catalogServiceRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Service not found"));
+                        new ResourceNotFoundException("Service not found"));
     }
 
     // Get services by category
@@ -51,7 +52,7 @@ public class CatalogServiceManager {
         CatalogService existingService =
                 catalogServiceRepository.findById(id)
                         .orElseThrow(() ->
-                                new RuntimeException("Service not found"));
+                                new ResourceNotFoundException("Service not found"));
 
         existingService.setCategoryId(service.getCategoryId());
         existingService.setName(service.getName());
@@ -68,7 +69,7 @@ public class CatalogServiceManager {
         CatalogService existingService =
                 catalogServiceRepository.findById(id)
                         .orElseThrow(() ->
-                                new RuntimeException("Service not found"));
+                                new ResourceNotFoundException("Service not found"));
 
         catalogServiceRepository.delete(existingService);
     }
