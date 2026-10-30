@@ -4,6 +4,7 @@ import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import Home from './pages/Home'
 import Profile from './pages/Profile'
+import FindTechnician from './pages/FindTechnician'
 
 import API_BASE_URL from './api'
 
@@ -44,7 +45,8 @@ function App() {
 
     if (
       pathname !== '/home' &&
-      pathname !== '/profile'
+      pathname !== '/profile' &&
+      pathname !== '/find'
     ) {
       return
     }
@@ -301,6 +303,13 @@ function App() {
   }
 
 
+  const goToFind = () => {
+
+    window.location.href =
+      '/find'
+  }
+
+
   // =========================================================
   // LOGIN PAGE
   // =========================================================
@@ -321,6 +330,25 @@ function App() {
 
     return (
       <Onboarding />
+    )
+  }
+
+
+  // =========================================================
+  // FIND A TECHNICIAN PAGE
+  // =========================================================
+
+  if (pathname === '/find') {
+
+    return (
+
+      <FindTechnician
+        user={user}
+        onHome={goToHome}
+        onProfile={goToProfile}
+        onLogout={handleLogout}
+      />
+
     )
   }
 
@@ -402,6 +430,7 @@ function App() {
         onHome={goToHome}
         onProfile={goToProfile}
         onLogout={handleLogout}
+        onFind={goToFind}
       />
 
     )

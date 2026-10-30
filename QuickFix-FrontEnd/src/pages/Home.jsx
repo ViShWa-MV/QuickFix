@@ -2,7 +2,8 @@ function Home({
   user,
   onHome,
   onProfile,
-  onLogout
+  onLogout,
+  onFind
 }) {
 
   return (
@@ -45,8 +46,9 @@ function Home({
 
           <button
             className="profile-button"
+            onClick={onFind}
           >
-            Services
+            Find a Technician
           </button>
 
 
@@ -111,6 +113,14 @@ function Home({
           </p>
 
 
+          <button
+            className="hero-cta"
+            onClick={onFind}
+          >
+            🔎 Find a Technician
+          </button>
+
+
         </section>
 
 
@@ -131,7 +141,7 @@ function Home({
 
             {/* AC REPAIR */}
 
-            <div className="service-card">
+            <div className="service-card" onClick={onFind}>
 
               <div className="service-icon">
                 ❄️
@@ -150,7 +160,7 @@ function Home({
 
             {/* PLUMBING */}
 
-            <div className="service-card">
+            <div className="service-card" onClick={onFind}>
 
               <div className="service-icon">
                 🚿
@@ -169,7 +179,7 @@ function Home({
 
             {/* ELECTRICAL */}
 
-            <div className="service-card">
+            <div className="service-card" onClick={onFind}>
 
               <div className="service-icon">
                 ⚡
@@ -188,7 +198,7 @@ function Home({
 
             {/* CLEANING */}
 
-            <div className="service-card">
+            <div className="service-card" onClick={onFind}>
 
               <div className="service-icon">
                 🧹
