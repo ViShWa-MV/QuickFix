@@ -3,22 +3,29 @@ package com.example.catalog.service;
 import com.example.catalog.dto.TechnicianProfileRequest;
 import com.example.catalog.dto.TechnicianProfileResponse;
 import com.example.catalog.dto.VerificationDecisionRequest;
+import com.example.catalog.entity.SlotStatus;
 import com.example.catalog.entity.TechnicianProfile;
 import com.example.catalog.entity.VerificationStatus;
 import com.example.catalog.exception.ResourceNotFoundException;
+import com.example.catalog.repository.AvailabilitySlotRepository;
 import com.example.catalog.repository.TechnicianProfileRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
 public class TechnicianProfileService {
 
     private final TechnicianProfileRepository repository;
+    private final AvailabilitySlotRepository slotRepository;
 
     public TechnicianProfileService(
-            TechnicianProfileRepository repository) {
+            TechnicianProfileRepository repository,
+            AvailabilitySlotRepository slotRepository) {
         this.repository = repository;
+        this.slotRepository = slotRepository;
     }
 
     /** A technician registers their profile; it starts PENDING verification. */
@@ -95,6 +102,44 @@ public class TechnicianProfileService {
         profile.setVerificationStatus(target);
 
         return TechnicianProfileResponse.from(repository.save(profile));
+    }
+
+    /**
+     * Discovery search: approved technicians skilled in {@code categoryId},
+     * serving {@code pincode}, with an OPEN slot overlapping [from, to).
+     * Ranked by rating, then experience, then number of ratings.
+     * (Price and distance ranking are deferred until that data is modelled.)
+     */
+    public List<TechnicianProfileResponse> search(
+            Long categoryId,
+            String pincode,
+            LocalDateTime from,
+            LocalDateTime to) {
+
+        if (!to.isAfter(from)) {
+            throw new IllegalArgumentException("'to' must be after 'from'");
+        }
+
+        Comparator<TechnicianProfile> ranking =
+                Comparator.comparing(
+                                TechnicianProfile::getRatingAvg,
+                                Comparator.reverseOrder())
+                        .thenComparing(
+                                (TechnicianProfile p) -> p.getYearsExperience() == null
+                                        ? 0 : p.getYearsExperience(),
+                                Comparator.reverseOrder())
+                        .thenComparing(
+                                TechnicianProfile::getRatingCount,
+                                Comparator.reverseOrder());
+
+        return repository.findApprovedByCategoryAndArea(categoryId, pincode)
+                .stream()
+                .filter(p -> slotRepository
+                        .existsByTechnicianProfileIdAndStatusAndStartAtLessThanAndEndAtGreaterThan(
+                                p.getId(), SlotStatus.OPEN, to, from))
+                .sorted(ranking)
+                .map(TechnicianProfileResponse::from)
+                .toList();
     }
 
     private TechnicianProfile find(Long id) {

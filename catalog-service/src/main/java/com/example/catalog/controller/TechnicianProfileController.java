@@ -5,9 +5,11 @@ import com.example.catalog.dto.TechnicianProfileResponse;
 import com.example.catalog.dto.VerificationDecisionRequest;
 import com.example.catalog.service.TechnicianProfileService;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -39,6 +41,23 @@ public class TechnicianProfileController {
     @GetMapping
     public List<TechnicianProfileResponse> getApproved() {
         return service.getApproved();
+    }
+
+    /**
+     * Discovery search: approved technicians skilled in {@code category},
+     * serving {@code pincode}, with a free slot overlapping [from, to).
+     */
+    @GetMapping("/search")
+    public List<TechnicianProfileResponse> search(
+            @RequestParam Long category,
+            @RequestParam String pincode,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime from,
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime to) {
+        return service.search(category, pincode, from, to);
     }
 
     /** Admin review queue — profiles awaiting verification. */
