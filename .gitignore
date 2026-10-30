@@ -38,6 +38,7 @@ build/
 ### Local secrets - never commit ###
 src/main/resources/application.properties
 catalog-service/src/main/resources/application.properties
+booking-service/src/main/resources/application.properties
 
 # Auto-added by Nuvai session-start-governance-check
 .nuvai/reports
