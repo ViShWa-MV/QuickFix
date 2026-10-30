@@ -38,4 +38,7 @@ public class AvailabilitySlot {
     @Column(nullable = false)
     @Builder.Default
     private SlotStatus status = SlotStatus.OPEN;
+
+    /** When the slot was moved to HELD; used to auto-release stale holds. */
+    private LocalDateTime heldAt;
 }

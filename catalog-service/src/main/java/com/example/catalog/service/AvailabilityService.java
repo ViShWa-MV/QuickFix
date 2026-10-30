@@ -9,6 +9,7 @@ import com.example.catalog.exception.ResourceNotFoundException;
 import com.example.catalog.repository.AvailabilitySlotRepository;
 import com.example.catalog.repository.TechnicianProfileRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,6 +22,9 @@ public class AvailabilityService {
     /** Guard rails for bulk generation. */
     private static final long MAX_RANGE_DAYS = 62;
     private static final int MAX_GENERATED = 5000;
+
+    /** A held slot older than this is auto-released by the sweep. */
+    private static final long HELD_TTL_MINUTES = 15;
 
     private final AvailabilitySlotRepository slotRepository;
     private final TechnicianProfileRepository profileRepository;
@@ -143,6 +147,57 @@ public class AvailabilityService {
                     "Only OPEN slots can be removed");
         }
         slotRepository.delete(slot);
+    }
+
+    // =====================================================================
+    // State transitions (called by booking-service; compare-and-set)
+    // =====================================================================
+
+    /** OPEN -> HELD. Fails (409) if the slot is not currently OPEN. */
+    @Transactional
+    public SlotResponse hold(Long slotId) {
+        if (slotRepository.hold(slotId, LocalDateTime.now()) == 0) {
+            requireSlot(slotId);
+            throw new IllegalStateException("Slot is not available");
+        }
+        return SlotResponse.from(fetchSlot(slotId));
+    }
+
+    /** HELD -> BOOKED. Fails (409) if the slot is not currently HELD. */
+    @Transactional
+    public SlotResponse book(Long slotId) {
+        if (slotRepository.book(slotId) == 0) {
+            requireSlot(slotId);
+            throw new IllegalStateException("Slot is not held");
+        }
+        return SlotResponse.from(fetchSlot(slotId));
+    }
+
+    /** HELD/BOOKED -> OPEN. Idempotent: a slot already OPEN is left as-is. */
+    @Transactional
+    public SlotResponse release(Long slotId) {
+        requireSlot(slotId);
+        slotRepository.release(slotId);
+        return SlotResponse.from(fetchSlot(slotId));
+    }
+
+    /** Safety net sweep: release holds older than the TTL. Returns count freed. */
+    @Transactional
+    public int releaseStaleHolds() {
+        return slotRepository.releaseStaleHolds(
+                LocalDateTime.now().minusMinutes(HELD_TTL_MINUTES));
+    }
+
+    private AvailabilitySlot fetchSlot(Long slotId) {
+        return slotRepository.findById(slotId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Slot not found"));
+    }
+
+    private void requireSlot(Long slotId) {
+        if (!slotRepository.existsById(slotId)) {
+            throw new ResourceNotFoundException("Slot not found");
+        }
     }
 
     private void requireProfile(Long profileId) {
