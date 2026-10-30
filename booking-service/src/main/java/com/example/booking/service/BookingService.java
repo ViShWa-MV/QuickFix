@@ -5,9 +5,11 @@ import com.example.booking.dto.BookingRequest;
 import com.example.booking.dto.BookingResponse;
 import com.example.booking.entity.Booking;
 import com.example.booking.entity.BookingStatus;
+import com.example.booking.entity.QuoteStatus;
 import com.example.booking.exception.ResourceNotFoundException;
 import com.example.booking.exception.SlotUnavailableException;
 import com.example.booking.repository.BookingRepository;
+import com.example.booking.repository.QuoteRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,12 +23,15 @@ public class BookingService {
     private static final long REQUEST_TTL_MINUTES = 15;
 
     private final BookingRepository repository;
+    private final QuoteRepository quoteRepository;
     private final CatalogClient catalog;
 
     public BookingService(
             BookingRepository repository,
+            QuoteRepository quoteRepository,
             CatalogClient catalog) {
         this.repository = repository;
+        this.quoteRepository = quoteRepository;
         this.catalog = catalog;
     }
 
@@ -147,7 +152,19 @@ public class BookingService {
 
     @Transactional
     public BookingResponse complete(Long id) {
-        return move(id, BookingStatus.IN_PROGRESS, BookingStatus.COMPLETED);
+        Booking booking = find(id);
+        requireStatus(booking, BookingStatus.IN_PROGRESS);
+
+        // A still-undecided quote must be resolved before the job can close out.
+        quoteRepository.findByBookingId(id).ifPresent(quote -> {
+            if (quote.getStatus() == QuoteStatus.PROPOSED) {
+                throw new IllegalStateException(
+                        "Resolve the pending quote before completing the job");
+            }
+        });
+
+        booking.setStatus(BookingStatus.COMPLETED);
+        return BookingResponse.from(repository.save(booking));
     }
 
     @Transactional
