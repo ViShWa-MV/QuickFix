@@ -37,3 +37,18 @@ build/
 
 ### Local secrets - never commit ###
 src/main/resources/application.properties
+catalog-service/src/main/resources/application.properties
+
+# Auto-added by Nuvai session-start-governance-check
+.nuvai/reports
+.nuvai/local/
+.DS_Store
+.nuvai/active-context.yaml
+.nuvai/active-prompts/
+.nuvai/debug/
+.nuvai/bug-rc/
+.nuvai/agent-progress/
+.nuvai/issues.jsonl
+.nuvai/discussions.jsonl
+.nuvai/reviews/
+.nuvai/audits
