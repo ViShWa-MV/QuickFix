@@ -3,9 +3,12 @@ package com.example.booking.service;
 import com.example.booking.client.CatalogClient;
 import com.example.booking.dto.BookingRequest;
 import com.example.booking.dto.BookingResponse;
+import com.example.booking.dto.OtpView;
 import com.example.booking.entity.Booking;
 import com.example.booking.entity.BookingStatus;
+import com.example.booking.entity.OtpPurpose;
 import com.example.booking.entity.QuoteStatus;
+import com.example.booking.exception.OtpException;
 import com.example.booking.exception.ResourceNotFoundException;
 import com.example.booking.exception.SlotUnavailableException;
 import com.example.booking.repository.BookingRepository;
@@ -24,14 +27,17 @@ public class BookingService {
 
     private final BookingRepository repository;
     private final QuoteRepository quoteRepository;
+    private final OtpService otpService;
     private final CatalogClient catalog;
 
     public BookingService(
             BookingRepository repository,
             QuoteRepository quoteRepository,
+            OtpService otpService,
             CatalogClient catalog) {
         this.repository = repository;
         this.quoteRepository = quoteRepository;
+        this.otpService = otpService;
         this.catalog = catalog;
     }
 
@@ -136,8 +142,17 @@ public class BookingService {
         booking.setStatus(BookingStatus.CANCELLED);
         BookingResponse response = BookingResponse.from(repository.save(booking));
 
+        otpService.voidAll(id);
         catalog.releaseSlotQuietly(booking.getSlotId());
         return response;
+    }
+
+    /** Customer-facing: the active code to display for this booking + purpose. */
+    public OtpView getActiveOtp(Long id, OtpPurpose purpose) {
+        return otpService.activeFor(id, purpose)
+                .map(OtpView::from)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No active code for this booking"));
     }
 
     @Transactional
@@ -145,17 +160,44 @@ public class BookingService {
         return move(id, BookingStatus.CONFIRMED, BookingStatus.EN_ROUTE);
     }
 
+    /** Technician reached the address → issue the start OTP to the customer. */
     @Transactional
-    public BookingResponse start(Long id) {
-        return move(id, BookingStatus.EN_ROUTE, BookingStatus.IN_PROGRESS);
+    public BookingResponse arrive(Long id) {
+        Booking booking = find(id);
+        requireStatus(booking, BookingStatus.EN_ROUTE);
+        otpService.generate(id, OtpPurpose.START);
+        return BookingResponse.from(booking);
     }
 
+    /** Start work — requires the customer's start OTP. */
+    // Don't roll back on OTP errors: a failed attempt must still persist the
+    // incremented attempt counter (and any expiry flip) so the lock can trip.
+    @Transactional(noRollbackFor = { OtpException.class, IllegalStateException.class })
+    public BookingResponse start(Long id, String otp) {
+        Booking booking = find(id);
+        requireStatus(booking, BookingStatus.EN_ROUTE);
+        otpService.verify(id, OtpPurpose.START, otp);
+        booking.setStatus(BookingStatus.IN_PROGRESS);
+        return BookingResponse.from(repository.save(booking));
+    }
+
+    /** Work finished → issue the completion OTP to the customer. */
     @Transactional
-    public BookingResponse complete(Long id) {
+    public BookingResponse requestCompletion(Long id) {
+        Booking booking = find(id);
+        requireStatus(booking, BookingStatus.IN_PROGRESS);
+        otpService.generate(id, OtpPurpose.COMPLETION);
+        return BookingResponse.from(booking);
+    }
+
+    /** Complete — requires a resolved quote and the customer's completion OTP. */
+    @Transactional(noRollbackFor = { OtpException.class, IllegalStateException.class })
+    public BookingResponse complete(Long id, String otp) {
         Booking booking = find(id);
         requireStatus(booking, BookingStatus.IN_PROGRESS);
 
-        // A still-undecided quote must be resolved before the job can close out.
+        // A still-undecided quote blocks completion (checked before the OTP is
+        // consumed, so a pending quote doesn't burn the code).
         quoteRepository.findByBookingId(id).ifPresent(quote -> {
             if (quote.getStatus() == QuoteStatus.PROPOSED) {
                 throw new IllegalStateException(
@@ -163,6 +205,7 @@ public class BookingService {
             }
         });
 
+        otpService.verify(id, OtpPurpose.COMPLETION, otp);
         booking.setStatus(BookingStatus.COMPLETED);
         return BookingResponse.from(repository.save(booking));
     }

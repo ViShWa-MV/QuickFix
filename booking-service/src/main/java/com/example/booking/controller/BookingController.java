@@ -2,6 +2,9 @@ package com.example.booking.controller;
 
 import com.example.booking.dto.BookingRequest;
 import com.example.booking.dto.BookingResponse;
+import com.example.booking.dto.OtpSubmitRequest;
+import com.example.booking.dto.OtpView;
+import com.example.booking.entity.OtpPurpose;
 import com.example.booking.service.BookingService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -75,14 +78,40 @@ public class BookingController {
         return service.markEnRoute(id);
     }
 
-    @PostMapping("/{id}/start")
-    public BookingResponse start(@PathVariable Long id) {
-        return service.start(id);
+    /** Technician reached the address → issues the customer's start OTP. */
+    @PostMapping("/{id}/arrive")
+    public BookingResponse arrive(@PathVariable Long id) {
+        return service.arrive(id);
     }
 
+    /** Start work — the technician submits the customer's start OTP. */
+    @PostMapping("/{id}/start")
+    public BookingResponse start(
+            @PathVariable Long id,
+            @Valid @RequestBody OtpSubmitRequest request) {
+        return service.start(id, request.getOtp());
+    }
+
+    /** Work finished → issues the customer's completion OTP. */
+    @PostMapping("/{id}/request-completion")
+    public BookingResponse requestCompletion(@PathVariable Long id) {
+        return service.requestCompletion(id);
+    }
+
+    /** Complete — the technician submits the customer's completion OTP. */
     @PostMapping("/{id}/complete")
-    public BookingResponse complete(@PathVariable Long id) {
-        return service.complete(id);
+    public BookingResponse complete(
+            @PathVariable Long id,
+            @Valid @RequestBody OtpSubmitRequest request) {
+        return service.complete(id, request.getOtp());
+    }
+
+    /** Customer-facing: read the active code to display (START or COMPLETION). */
+    @GetMapping("/{id}/otp")
+    public OtpView activeOtp(
+            @PathVariable Long id,
+            @RequestParam OtpPurpose purpose) {
+        return service.getActiveOtp(id, purpose);
     }
 
     @PostMapping("/{id}/close")
