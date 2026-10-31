@@ -3,7 +3,8 @@ function Home({
   onHome,
   onProfile,
   onLogout,
-  onFind
+  onFind,
+  onBookings
 }) {
 
   return (
@@ -54,6 +55,7 @@ function Home({
 
           <button
             className="profile-button"
+            onClick={onBookings}
           >
             Bookings
           </button>
@@ -238,6 +240,7 @@ function Home({
 
             <button
               className="action-card"
+              onClick={onBookings}
             >
 
               📅

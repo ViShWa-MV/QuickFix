@@ -5,6 +5,8 @@ import Onboarding from './pages/Onboarding'
 import Home from './pages/Home'
 import Profile from './pages/Profile'
 import FindTechnician from './pages/FindTechnician'
+import Bookings from './pages/Bookings'
+import TechnicianDashboard from './pages/TechnicianDashboard'
 
 import API_BASE_URL from './api'
 
@@ -46,7 +48,8 @@ function App() {
     if (
       pathname !== '/home' &&
       pathname !== '/profile' &&
-      pathname !== '/find'
+      pathname !== '/find' &&
+      pathname !== '/bookings'
     ) {
       return
     }
@@ -310,6 +313,13 @@ function App() {
   }
 
 
+  const goToBookings = () => {
+
+    window.location.href =
+      '/bookings'
+  }
+
+
   // =========================================================
   // LOGIN PAGE
   // =========================================================
@@ -335,6 +345,52 @@ function App() {
 
 
   // =========================================================
+  // AUTHENTICATED APP PAGES — loading / error / role routing
+  // =========================================================
+
+  const authenticatedPaths = ['/home', '/profile', '/find', '/bookings']
+
+  if (authenticatedPaths.includes(pathname)) {
+
+    if (loading) {
+      return (
+        <div className="dashboard-page">
+          <div className="dashboard-loading">
+            <h2>Loading QuickFix...</h2>
+          </div>
+        </div>
+      )
+    }
+
+    if (error) {
+      return (
+        <div className="dashboard-page">
+          <div className="dashboard-error">
+            <h2>Something went wrong</h2>
+            <p>{error}</p>
+            <button onClick={() => (window.location.href = '/')}>
+              Back to Login
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    // Technicians get the technician dashboard for the app pages;
+    // the profile page stays the shared account screen.
+    if (user?.role === 'TECHNICIAN' && pathname !== '/profile') {
+      return (
+        <TechnicianDashboard
+          user={user}
+          onProfile={goToProfile}
+          onLogout={handleLogout}
+        />
+      )
+    }
+  }
+
+
+  // =========================================================
   // FIND A TECHNICIAN PAGE
   // =========================================================
 
@@ -347,6 +403,7 @@ function App() {
         onHome={goToHome}
         onProfile={goToProfile}
         onLogout={handleLogout}
+        onBookings={goToBookings}
       />
 
     )
@@ -354,66 +411,22 @@ function App() {
 
 
   // =========================================================
-  // LOADING
+  // MY BOOKINGS PAGE
   // =========================================================
 
-  if (
-    pathname === '/home' ||
-    pathname === '/profile'
-  ) {
+  if (pathname === '/bookings') {
 
-    if (loading) {
+    return (
 
-      return (
+      <Bookings
+        user={user}
+        onHome={goToHome}
+        onProfile={goToProfile}
+        onLogout={handleLogout}
+        onFind={goToFind}
+      />
 
-        <div className="dashboard-page">
-
-          <div className="dashboard-loading">
-
-            <h2>
-              Loading QuickFix...
-            </h2>
-
-          </div>
-
-        </div>
-      )
-    }
-
-
-    // =======================================================
-    // ERROR
-    // =======================================================
-
-    if (error) {
-
-      return (
-
-        <div className="dashboard-page">
-
-          <div className="dashboard-error">
-
-            <h2>
-              Something went wrong
-            </h2>
-
-            <p>
-              {error}
-            </p>
-
-            <button
-              onClick={() =>
-                window.location.href = '/'
-              }
-            >
-              Back to Login
-            </button>
-
-          </div>
-
-        </div>
-      )
-    }
+    )
   }
 
 
@@ -431,6 +444,7 @@ function App() {
         onProfile={goToProfile}
         onLogout={handleLogout}
         onFind={goToFind}
+        onBookings={goToBookings}
       />
 
     )
