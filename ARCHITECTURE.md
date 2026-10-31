@@ -264,6 +264,52 @@ sequenceDiagram
 
 ---
 
+## Milestone OTP verification
+
+Two one-time codes prove the technician was physically present and that the
+customer acknowledged each milestone — the customer holds the code, the
+technician must enter it, so neither side can fake the step. They gate the
+`start` and `complete` transitions (no new states):
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant T as Technician
+  participant BK as booking-service
+  participant C as Customer
+  Note over BK: booking is EN_ROUTE
+  T->>BK: arrive
+  BK-->>C: issue START code (shown in customer app)
+  C-->>T: reads the code aloud
+  T->>BK: start { otp }
+  BK->>BK: verify → IN_PROGRESS
+  Note over BK: work happens (optional quote)
+  T->>BK: request-completion
+  BK-->>C: issue COMPLETION code
+  C-->>T: reads the code aloud
+  T->>BK: complete { otp }
+  BK->>BK: verify (+ quote resolved) → COMPLETED
+```
+
+**Rules**
+- 6‑digit numeric code, **5‑minute expiry**, **3 attempts**, then it locks and
+  must be re‑sent (`arrive` / `request-completion` again); regenerating voids
+  the previous code.
+- One active code per `(booking, purpose)`; cancelling a booking voids any
+  active code.
+- The code is readable **only by the customer** (`GET /api/bookings/{id}/otp`);
+  the technician's responses never contain it.
+- `complete` requires **both** the completion OTP and a resolved quote.
+
+**Delivery & storage.** Today the customer reads the code from their app, so the
+code is stored retrievably and served only to the customer. When SMS/push
+delivery is added, the customer's copy comes from that channel and the code
+becomes a one‑way **hash** at rest. (A failed attempt still persists its counter
+even though the request errors — the verify path uses `noRollbackFor` so the
+lock can trip.)
+
+---
+
 ## Cross-cutting concerns
 
 - **API Gateway** (Spring Cloud Gateway) terminates CORS once, validates the
