@@ -41,6 +41,8 @@
 
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
     sans-serif;
+  --display: 'Bricolage Grotesque', system-ui, -apple-system, 'Segoe UI',
+    Roboto, sans-serif;
 
   font: 16px/1.55 var(--sans);
   color: var(--text);
@@ -52,8 +54,11 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Dark palette tokens, reused below for both OS-dark and the manual toggle. */
+
+/* OS prefers dark AND the user hasn't explicitly forced light. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --brand: #a78bfa;
     --brand-600: #8b5cf6;
     --brand-700: #7c3aed;
@@ -76,7 +81,42 @@
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.45);
     --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55);
+
+    color-scheme: dark;
   }
+}
+
+/* User explicitly chose dark via the toggle (overrides OS light). */
+:root[data-theme="dark"] {
+  --brand: #a78bfa;
+  --brand-600: #8b5cf6;
+  --brand-700: #7c3aed;
+  --brand-tint: #1d1930;
+  --on-brand: #140b26;
+
+  --bg: #0f1115;
+  --surface: #171a21;
+  --surface-2: #1b1f28;
+
+  --text: #e7e9ee;
+  --text-muted: #9aa3b2;
+
+  --border: #272c38;
+  --ring: rgba(167, 139, 250, 0.35);
+  --danger: #f87171;
+  --danger-tint: #2a1414;
+  --success: #4ade80;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55);
+
+  color-scheme: dark;
+}
+
+/* User explicitly chose light (overrides OS dark). */
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 * {
@@ -102,10 +142,11 @@ h1,
 h2,
 h3 {
   color: var(--text);
-  font-weight: 650;
+  font-family: var(--display);
+  font-weight: 700;
   line-height: 1.2;
   margin: 0;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
 }
 
 h1 {
