@@ -56,6 +56,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiError> handleForbidden(
+            ForbiddenException ex, HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), request);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
@@ -68,6 +74,11 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST,
                 message.isBlank() ? "Validation failed" : message,
                 request);
+    }
+
+    @ExceptionHandler(AddressUnavailableException.class)
+    public ResponseEntity<ApiError> addressDown(AddressUnavailableException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_GATEWAY, ex.getMessage(), request);
     }
 
     @ExceptionHandler(CatalogUnavailableException.class)

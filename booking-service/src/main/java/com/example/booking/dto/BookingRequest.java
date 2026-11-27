@@ -5,17 +5,13 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * A customer's request to book a technician.
- *
- * <p>Step 7 (hardening): {@code customerId} should come from the authenticated
- * principal once booking-service sits behind auth, not from the body.
+ * A request to book a technician for a service in one of their slots, at one of
+ * the customer's verified addresses. The customer is the signed-in user, taken
+ * from the token, not from this body.
  */
 @Getter
 @Setter
 public class BookingRequest {
-
-    @NotNull
-    private Long customerId;
 
     @NotNull
     private Long technicianProfileId;
@@ -25,4 +21,8 @@ public class BookingRequest {
 
     @NotNull
     private Long slotId;
+
+    /** The customer's saved address, verified by user-service. */
+    @NotNull
+    private Long addressId;
 }

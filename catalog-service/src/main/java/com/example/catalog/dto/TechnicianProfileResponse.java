@@ -14,9 +14,9 @@ import java.util.List;
 @Getter
 @AllArgsConstructor
 public class TechnicianProfileResponse {
-
     private Long id;
     private Long userId;
+    private String displayName;
     private List<Long> skills;
     private List<String> serviceAreas;
     private Integer yearsExperience;
@@ -28,6 +28,7 @@ public class TechnicianProfileResponse {
         return new TechnicianProfileResponse(
                 p.getId(),
                 p.getUserId(),
+                p.getDisplayName(),
                 p.getSkills(),
                 p.getServiceAreas(),
                 p.getYearsExperience(),

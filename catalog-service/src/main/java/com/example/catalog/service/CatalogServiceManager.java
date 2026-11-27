@@ -3,6 +3,7 @@ package com.example.catalog.service;
 import com.example.catalog.entity.CatalogService;
 import com.example.catalog.exception.ResourceNotFoundException;
 import com.example.catalog.repository.CatalogServiceRepository;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -25,9 +26,9 @@ public class CatalogServiceManager {
     }
 
     // Get all services
-    public List<CatalogService> getAllServices() {
+    public List<CatalogService> getAllServices(Pageable pageable) {
 
-        return catalogServiceRepository.findAll();
+        return catalogServiceRepository.findAll(pageable).getContent();
     }
 
     // Get service by ID
@@ -39,9 +40,9 @@ public class CatalogServiceManager {
     }
 
     // Get services by category
-    public List<CatalogService> getServicesByCategory(Long categoryId) {
+    public List<CatalogService> getServicesByCategory(Long categoryId, Pageable pageable) {
 
-        return catalogServiceRepository.findByCategoryId(categoryId);
+        return catalogServiceRepository.findByCategoryId(categoryId, pageable);
     }
 
     // Update

@@ -54,6 +54,10 @@ public class TechnicianProfile {
 
     private Integer yearsExperience;
 
+    /** Public name shown on search results (chosen by the technician). */
+    @Column(name = "display_name")
+    private String displayName;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

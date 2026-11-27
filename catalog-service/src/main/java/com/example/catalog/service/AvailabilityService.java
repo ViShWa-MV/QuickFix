@@ -24,7 +24,7 @@ public class AvailabilityService {
     private static final int MAX_GENERATED = 5000;
 
     /** A held slot older than this is auto-released by the sweep. */
-    private static final long HELD_TTL_MINUTES = 15;
+    private static final long HELD_TTL_MINUTES = 30;
 
     private final AvailabilitySlotRepository slotRepository;
     private final TechnicianProfileRepository profileRepository;
@@ -153,9 +153,15 @@ public class AvailabilityService {
     // State transitions (called by booking-service; compare-and-set)
     // =====================================================================
 
-    /** OPEN -> HELD. Fails (409) if the slot is not currently OPEN. */
+    /** OPEN -> HELD for the given technician. Fails (409) if the slot is not OPEN. */
     @Transactional
-    public SlotResponse hold(Long slotId) {
+    public SlotResponse hold(Long slotId, Long profileId) {
+        AvailabilitySlot slot = slotRepository.findById(slotId)
+                .orElseThrow(() -> new ResourceNotFoundException("Slot not found"));
+        if (!slot.getTechnicianProfileId().equals(profileId)) {
+            // A slot can only be booked through the technician who published it.
+            throw new ResourceNotFoundException("Slot not found for this technician");
+        }
         if (slotRepository.hold(slotId, LocalDateTime.now()) == 0) {
             requireSlot(slotId);
             throw new IllegalStateException("Slot is not available");
