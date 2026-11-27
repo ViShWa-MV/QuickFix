@@ -10,6 +10,7 @@ import com.example.booking.entity.QuoteStatus;
 import com.example.booking.exception.ResourceNotFoundException;
 import com.example.booking.repository.BookingRepository;
 import com.example.booking.repository.QuoteRepository;
+import com.example.booking.security.AuthPrincipal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,30 +29,31 @@ public class QuoteService {
 
     private final QuoteRepository quoteRepository;
     private final BookingRepository bookingRepository;
+    private final Access access;
 
     public QuoteService(
             QuoteRepository quoteRepository,
-            BookingRepository bookingRepository) {
+            BookingRepository bookingRepository,
+            Access access) {
         this.quoteRepository = quoteRepository;
         this.bookingRepository = bookingRepository;
+        this.access = access;
     }
 
-    /** Technician proposes a quote for extra parts/labor. */
+    /** The assigned technician proposes a quote for extra parts or labour. */
     @Transactional
-    public QuoteResponse propose(Long bookingId, QuoteRequest request) {
+    public QuoteResponse propose(AuthPrincipal me, Long bookingId, QuoteRequest request) {
 
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Booking not found"));
+        Booking booking = findBooking(bookingId);
+        access.requireTechnician(booking, me);
 
         if (!QUOTABLE.contains(booking.getStatus())) {
             throw new IllegalStateException(
-                    "A quote can only be proposed on an active booking "
-                            + "(is " + booking.getStatus() + ")");
+                    "A quote can only be proposed on an active booking (is "
+                            + booking.getStatus() + ")");
         }
         if (quoteRepository.existsByBookingId(bookingId)) {
-            throw new IllegalStateException(
-                    "This booking already has a quote");
+            throw new IllegalStateException("This booking already has a quote");
         }
 
         List<QuoteLineItem> lineItems = request.getLineItems().stream()
@@ -76,35 +78,41 @@ public class QuoteService {
         return QuoteResponse.from(quoteRepository.save(quote));
     }
 
-    public QuoteResponse get(Long bookingId) {
+    /** The quote, visible to the booking's customer and technician (and admins). */
+    public QuoteResponse get(AuthPrincipal me, Long bookingId) {
+        access.requireParticipant(findBooking(bookingId), me);
         return QuoteResponse.from(find(bookingId));
     }
 
-    /** Customer approves the proposed quote. */
+    /** The customer approves the proposed quote. */
     @Transactional
-    public QuoteResponse approve(Long bookingId) {
-        return decide(bookingId, QuoteStatus.APPROVED);
+    public QuoteResponse approve(AuthPrincipal me, Long bookingId) {
+        return decide(me, bookingId, QuoteStatus.APPROVED);
     }
 
-    /** Customer rejects the proposed quote. */
+    /** The customer rejects the proposed quote. */
     @Transactional
-    public QuoteResponse reject(Long bookingId) {
-        return decide(bookingId, QuoteStatus.REJECTED);
+    public QuoteResponse reject(AuthPrincipal me, Long bookingId) {
+        return decide(me, bookingId, QuoteStatus.REJECTED);
     }
 
-    private QuoteResponse decide(Long bookingId, QuoteStatus target) {
+    private QuoteResponse decide(AuthPrincipal me, Long bookingId, QuoteStatus target) {
+        access.requireCustomer(findBooking(bookingId), me);
         Quote quote = find(bookingId);
         if (quote.getStatus() != QuoteStatus.PROPOSED) {
-            throw new IllegalStateException(
-                    "Quote is already " + quote.getStatus());
+            throw new IllegalStateException("Quote is already " + quote.getStatus());
         }
         quote.setStatus(target);
         return QuoteResponse.from(quoteRepository.save(quote));
     }
 
+    private Booking findBooking(Long bookingId) {
+        return bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+    }
+
     private Quote find(Long bookingId) {
         return quoteRepository.findByBookingId(bookingId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "No quote for this booking"));
+                .orElseThrow(() -> new ResourceNotFoundException("No quote for this booking"));
     }
 }

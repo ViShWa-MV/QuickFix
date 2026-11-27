@@ -1,48 +1,54 @@
 package com.example.catalog.service;
 
+import com.example.catalog.dto.RatingRequest;
 import com.example.catalog.dto.TechnicianProfileRequest;
 import com.example.catalog.dto.TechnicianProfileResponse;
 import com.example.catalog.dto.VerificationDecisionRequest;
-import com.example.catalog.entity.SlotStatus;
 import com.example.catalog.entity.TechnicianProfile;
 import com.example.catalog.entity.VerificationStatus;
 import com.example.catalog.exception.ResourceNotFoundException;
-import com.example.catalog.repository.AvailabilitySlotRepository;
 import com.example.catalog.repository.TechnicianProfileRepository;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
 
 @Service
 public class TechnicianProfileService {
 
     private final TechnicianProfileRepository repository;
-    private final AvailabilitySlotRepository slotRepository;
+    private final boolean autoApproveTechnicians;
 
     public TechnicianProfileService(
             TechnicianProfileRepository repository,
-            AvailabilitySlotRepository slotRepository) {
+            @Value("${quickfix.auto-approve-technicians:false}") boolean autoApproveTechnicians) {
         this.repository = repository;
-        this.slotRepository = slotRepository;
+        this.autoApproveTechnicians = autoApproveTechnicians;
     }
 
-    /** A technician registers their profile; it starts PENDING verification. */
-    public TechnicianProfileResponse register(
-            TechnicianProfileRequest request) {
+    /**
+     * Registers the signed-in technician's profile. It starts PENDING unless the
+     * development auto-approve setting is on.
+     */
+    public TechnicianProfileResponse register(Long userId, TechnicianProfileRequest request) {
 
-        if (repository.existsByUserId(request.getUserId())) {
+        if (repository.existsByUserId(userId)) {
             throw new IllegalStateException(
                     "A technician profile already exists for this user");
         }
 
         TechnicianProfile profile = TechnicianProfile.builder()
-                .userId(request.getUserId())
+                .userId(userId)
+                .displayName(request.getDisplayName().trim())
                 .skills(request.getSkills())
                 .serviceAreas(request.getServiceAreas())
                 .yearsExperience(request.getYearsExperience())
-                .verificationStatus(VerificationStatus.PENDING)
+                .verificationStatus(autoApproveTechnicians
+                        ? VerificationStatus.APPROVED
+                        : VerificationStatus.PENDING)
                 .ratingAvg(0.0)
                 .ratingCount(0)
                 .build();
@@ -62,23 +68,20 @@ public class TechnicianProfileService {
     }
 
     /** Public discovery list: only approved technicians are visible. */
-    public List<TechnicianProfileResponse> getApproved() {
-        return map(repository.findByVerificationStatus(
-                VerificationStatus.APPROVED));
+    public List<TechnicianProfileResponse> getApproved(Pageable pageable) {
+        return map(repository.findByVerificationStatus(VerificationStatus.APPROVED, pageable));
     }
 
     /** Admin review queue. */
-    public List<TechnicianProfileResponse> getPending() {
-        return map(repository.findByVerificationStatus(
-                VerificationStatus.PENDING));
+    public List<TechnicianProfileResponse> getPending(Pageable pageable) {
+        return map(repository.findByVerificationStatus(VerificationStatus.PENDING, pageable));
     }
 
     /** Technician edits their own profile details (not their verification). */
-    public TechnicianProfileResponse update(
-            Long id,
-            TechnicianProfileRequest request) {
+    public TechnicianProfileResponse update(Long id, TechnicianProfileRequest request) {
 
         TechnicianProfile profile = find(id);
+        profile.setDisplayName(request.getDisplayName().trim());
         profile.setSkills(request.getSkills());
         profile.setServiceAreas(request.getServiceAreas());
         profile.setYearsExperience(request.getYearsExperience());
@@ -87,9 +90,7 @@ public class TechnicianProfileService {
     }
 
     /** Admin approves or rejects a profile. */
-    public TechnicianProfileResponse decideVerification(
-            Long id,
-            VerificationDecisionRequest request) {
+    public TechnicianProfileResponse decideVerification(Long id, VerificationDecisionRequest request) {
 
         VerificationStatus target = request.getStatus();
         if (target != VerificationStatus.APPROVED
@@ -105,51 +106,41 @@ public class TechnicianProfileService {
     }
 
     /**
-     * Discovery search: approved technicians skilled in {@code categoryId},
-     * serving {@code pincode}, with an OPEN slot overlapping [from, to).
-     * Ranked by rating, then experience, then number of ratings.
-     * (Price and distance ranking are deferred until that data is modelled.)
+     * Discovery search: approved technicians skilled in {@code categoryId}, serving
+     * {@code pincode}, with an OPEN slot overlapping [from, to). Filtering, ordering,
+     * and paging all happen in the database.
      */
     public List<TechnicianProfileResponse> search(
             Long categoryId,
             String pincode,
             LocalDateTime from,
-            LocalDateTime to) {
+            LocalDateTime to,
+            Pageable pageable) {
 
         if (!to.isAfter(from)) {
             throw new IllegalArgumentException("'to' must be after 'from'");
         }
+        return map(repository.searchAvailable(categoryId, pincode, from, to, pageable));
+    }
 
-        Comparator<TechnicianProfile> ranking =
-                Comparator.comparing(
-                                TechnicianProfile::getRatingAvg,
-                                Comparator.reverseOrder())
-                        .thenComparing(
-                                (TechnicianProfile p) -> p.getYearsExperience() == null
-                                        ? 0 : p.getYearsExperience(),
-                                Comparator.reverseOrder())
-                        .thenComparing(
-                                TechnicianProfile::getRatingCount,
-                                Comparator.reverseOrder());
-
-        return repository.findApprovedByCategoryAndArea(categoryId, pincode)
-                .stream()
-                .filter(p -> slotRepository
-                        .existsByTechnicianProfileIdAndStatusAndStartAtLessThanAndEndAtGreaterThan(
-                                p.getId(), SlotStatus.OPEN, to, from))
-                .sorted(ranking)
-                .map(TechnicianProfileResponse::from)
-                .toList();
+    /**
+     * Called by booking-service after a customer rates a completed job. Folds the
+     * rating into the cached average atomically.
+     */
+    @Transactional
+    public void addRating(Long id, RatingRequest request) {
+        int updated = repository.addRating(id, request.getRating().doubleValue());
+        if (updated == 0) {
+            throw new ResourceNotFoundException("Technician profile not found");
+        }
     }
 
     private TechnicianProfile find(Long id) {
         return repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Technician profile not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Technician profile not found"));
     }
 
-    private List<TechnicianProfileResponse> map(
-            List<TechnicianProfile> profiles) {
+    private List<TechnicianProfileResponse> map(List<TechnicianProfile> profiles) {
         return profiles.stream()
                 .map(TechnicianProfileResponse::from)
                 .toList();

@@ -5,6 +5,7 @@ import com.example.booking.entity.OtpPurpose;
 import com.example.booking.entity.OtpStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,4 +15,6 @@ public interface BookingOtpRepository extends JpaRepository<BookingOtp, Long> {
             Long bookingId, OtpPurpose purpose, OtpStatus status);
 
     List<BookingOtp> findByBookingIdAndStatus(Long bookingId, OtpStatus status);
+
+    List<BookingOtp> findByBookingIdInAndStatus(Collection<Long> bookingIds, OtpStatus status);
 }
