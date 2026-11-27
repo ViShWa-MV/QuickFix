@@ -56,3 +56,8 @@ booking-service/src/main/resources/application.properties
 
 # Local run logs
 logs/
+
+# Real env files (secrets). Templates named .env.example stay tracked.
+.env
+.env.*
+!.env.example
